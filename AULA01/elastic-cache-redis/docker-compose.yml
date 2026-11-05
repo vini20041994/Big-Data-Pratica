@@ -1,0 +1,65 @@
+services:
+  redis-primary:
+    image: redis:7.0
+    container_name: redis-primary
+    command: redis-server
+    networks:
+      - elasticache-ring
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  redis-replica-1:
+    image: redis:7.0
+    container_name: redis-replica-1
+    command: redis-server --replicaof redis-primary 6379
+    networks:
+      - elasticache-ring
+    depends_on:
+      redis-primary:
+        condition: service_healthy
+    healthcheck:
+      # master_link_status:up prova que a replicacao foi de fato estabelecida,
+      # nao apenas que o processo respondeu ao PING.
+      test: ["CMD-SHELL", "redis-cli INFO replication | grep -q 'master_link_status:up'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  redis-replica-2:
+    image: redis:7.0
+    container_name: redis-replica-2
+    command: redis-server --replicaof redis-primary 6379
+    networks:
+      - elasticache-ring
+    depends_on:
+      redis-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli INFO replication | grep -q 'master_link_status:up'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  redis-client:
+    image: redis:7.0
+    container_name: redis-client
+    entrypoint: /bin/bash
+    command: -c "tail -f /dev/null"
+    networks:
+      - elasticache-ring
+    depends_on:
+      redis-replica-1:
+        condition: service_healthy
+      redis-replica-2:
+        condition: service_healthy
+
+networks:
+  elasticache-ring:
+    name: pacelc-elasticache-network
+    driver: bridge

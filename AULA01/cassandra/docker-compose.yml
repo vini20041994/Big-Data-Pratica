@@ -1,0 +1,69 @@
+services:
+  cassandra-node1:
+    image: cassandra:4.1
+    container_name: cassandra-node1
+    environment:
+      - CASSANDRA_CLUSTER_NAME=PACELC_Cluster
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_SEEDS=cassandra-node1
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    ports:
+      - "9042:9042"
+    networks:
+      - cassandra-ring
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status | grep -q '^UN' && cqlsh -e 'DESCRIBE KEYSPACES;'"]
+      interval: 15s
+      timeout: 15s
+      retries: 40
+      start_period: 60s
+
+  cassandra-node2:
+    image: cassandra:4.1
+    container_name: cassandra-node2
+    environment:
+      - CASSANDRA_CLUSTER_NAME=PACELC_Cluster
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_SEEDS=cassandra-node1
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    networks:
+      - cassandra-ring
+    # Cassandra exige bootstrap serializado: dois nos ingressando ao mesmo tempo
+    # colidem na negociacao de tokens. O gate service_healthy serializa o ingresso.
+    depends_on:
+      cassandra-node1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status | grep -q '^UN' && cqlsh -e 'DESCRIBE KEYSPACES;'"]
+      interval: 15s
+      timeout: 15s
+      retries: 40
+      start_period: 60s
+
+  cassandra-node3:
+    image: cassandra:4.1
+    container_name: cassandra-node3
+    environment:
+      - CASSANDRA_CLUSTER_NAME=PACELC_Cluster
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_SEEDS=cassandra-node1
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    networks:
+      - cassandra-ring
+    depends_on:
+      cassandra-node2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status | grep -q '^UN' && cqlsh -e 'DESCRIBE KEYSPACES;'"]
+      interval: 15s
+      timeout: 15s
+      retries: 40
+      start_period: 60s
+
+networks:
+  cassandra-ring:
+    name: pacelc-network
+    driver: bridge
