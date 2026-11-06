@@ -1,0 +1,21 @@
+services:
+  redis-lab:
+    image: redis:7.0
+    container_name: redis-lab
+    # Sem arquivo de configuracao e sem volume nomeado: o Redis sobe com os
+    # defaults de fabrica. Isso e proposital -- o Passo 6 mede exatamente o
+    # que esses defaults garantem, e o que eles nao garantem.
+    command: redis-server --appendonly yes --appendfsync everysec
+    networks:
+      - keyvalue-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 3s
+
+networks:
+  keyvalue-net:
+    name: aula02-keyvalue-network
+    driver: bridge

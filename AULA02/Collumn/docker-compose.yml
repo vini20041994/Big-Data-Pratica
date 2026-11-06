@@ -1,0 +1,27 @@
+services:
+  cassandra-lab:
+    image: cassandra:4.1
+    container_name: cassandra-lab
+    environment:
+      - CASSANDRA_CLUSTER_NAME=Aula02_Collumn
+      # Um no so: sem outro no para conversar, o Gossip converge em segundos.
+      - CASSANDRA_SEEDS=cassandra-lab
+      # Por padrao o Cassandra dimensiona o heap pela RAM total da maquina.
+      # Sem este limite uma JVM sozinha ja incomoda um notebook.
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    networks:
+      - collumn-net
+    healthcheck:
+      # Aceitar CQL e o que interessa: o no pode estar UN e ainda recusar
+      # comando enquanto o CQL nao subiu.
+      test: ["CMD-SHELL", "nodetool status | grep -q '^UN' && cqlsh -e 'DESCRIBE KEYSPACES;'"]
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+
+networks:
+  collumn-net:
+    name: aula02-collumn-network
+    driver: bridge

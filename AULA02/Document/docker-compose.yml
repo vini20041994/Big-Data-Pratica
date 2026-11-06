@@ -1,0 +1,19 @@
+services:
+  mongo-lab:
+    image: mongo:7
+    container_name: mongo-lab
+    networks:
+      - document-net
+    healthcheck:
+      # ping so prova que o processo respondeu. O que interessa e o servidor
+      # aceitar comando de escrita, entao o teste roda um insert descartavel.
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.getSiblingDB(\"health\").probe.insertOne({t:new Date()}).acknowledged' | grep -q true"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+networks:
+  document-net:
+    name: aula02-document-network
+    driver: bridge
